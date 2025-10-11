@@ -53,14 +53,15 @@ export async function addTask(task: Omit<TaskData, 'createdAt'>): Promise<{ data
   }
 }
 
-export async function updateTaskStatus(id: string, status: TaskStatus): Promise<void> {
+export async function updateTaskStatus(id: string, status: TaskStatus): Promise<{ success: boolean } | { error: string }> {
   try {
     const taskDoc = doc(db, 'tasks', id);
     await updateDoc(taskDoc, { status });
     revalidatePath('/');
+    return { success: true };
   } catch (error) {
     console.error("Error updating task status: ", error);
-    // Optionally return an error object
+    return { error: 'Failed to update task status.' };
   }
 }
 

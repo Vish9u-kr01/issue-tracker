@@ -36,7 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Plus, Sparkles, Wand2 } from 'lucide-react';
 import type { TaskPriority } from '@/lib/types';
 import type { PrioritizeTaskOutput } from '@/ai/flows/intelligent-task-prioritization';
-import { useKanban } from './kanban-board';
+import { useKanban } from './kanban-provider';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required.'),

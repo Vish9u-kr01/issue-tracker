@@ -12,7 +12,6 @@ interface KanbanColumnProps {
   onDrop: (status: TaskStatus) => void;
   onDragStart: (e: React.DragEvent<HTMLDivElement>, taskId: string) => void;
   onDragEnd: () => void;
-  isDraggedOver: boolean;
 }
 
 export default function KanbanColumn({
@@ -26,6 +25,7 @@ export default function KanbanColumn({
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    setIsOver(true);
   };
 
   const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {

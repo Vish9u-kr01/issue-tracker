@@ -1,33 +1,15 @@
 'use client';
 
-import { useState, useMemo, createContext, useContext } from 'react';
+import { useMemo } from 'react';
 import { updateTaskStatus } from '@/lib/actions';
-import type { Task, TaskStatus } from '@/lib/types';
+import type { TaskStatus } from '@/lib/types';
 import KanbanColumn from './kanban-column';
+import { useKanban } from './kanban-provider';
 
 const STATUSES: TaskStatus[] = ['Todo', 'In Progress', 'Done'];
 
-interface KanbanContextType {
-  addTask: (task: Task) => void;
-}
-
-const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
-
-export const useKanban = () => {
-  const context = useContext(KanbanContext);
-  if (!context) {
-    throw new Error('useKanban must be used within a KanbanBoard');
-  }
-  return context;
-}
-
-export default function KanbanBoard({ initialTasks }: { initialTasks: Task[] }) {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
-  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
-
-  const addTaskToBoard = (newTask: Task) => {
-    setTasks(currentTasks => [newTask, ...currentTasks]);
-  };
+export default function KanbanBoard() {
+  const { tasks, setTasks, draggedTaskId, setDraggedTaskId } = useKanban();
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>, taskId: string) => {
     e.dataTransfer.setData('taskId', taskId);
@@ -41,14 +23,22 @@ export default function KanbanBoard({ initialTasks }: { initialTasks: Task[] }) 
   const handleDrop = (newStatus: TaskStatus) => {
     if (!draggedTaskId) return;
 
+    const originalTask = tasks.find(t => t.id === draggedTaskId);
+    if (!originalTask) return;
+
+    const originalStatus = originalTask.status;
+
     // Optimistic UI update
     const updatedTasks = tasks.map(task =>
       task.id === draggedTaskId ? { ...task, status: newStatus } : task
     );
     setTasks(updatedTasks);
 
-    // Call server action
-    updateTaskStatus(draggedTaskId, newStatus);
+    // Call server action and revert on failure
+    updateTaskStatus(draggedTaskId, newStatus).catch(() => {
+        // Revert UI if the server update fails
+        setTasks(currentTasks => currentTasks.map(t => t.id === draggedTaskId ? { ...t, status: originalStatus } : t));
+    });
   };
 
   const columns = useMemo(() => {
@@ -59,7 +49,6 @@ export default function KanbanBoard({ initialTasks }: { initialTasks: Task[] }) 
   }, [tasks]);
 
   return (
-    <KanbanContext.Provider value={{ addTask: addTaskToBoard }}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {columns.map(({ status, tasks }) => (
           <KanbanColumn
@@ -69,10 +58,8 @@ export default function KanbanBoard({ initialTasks }: { initialTasks: Task[] }) 
             onDrop={handleDrop}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
-            isDraggedOver={draggedTaskId !== null}
           />
         ))}
       </div>
-    </KanbanContext.Provider>
   );
 }
