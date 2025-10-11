@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, orderBy, query } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, serverTimestamp, orderBy, query, Timestamp } from 'firebase/firestore';
 import { db } from './firebase';
 import type { Task, TaskData, TaskPriority, TaskStatus } from './types';
 import { prioritizeTask, PrioritizeTaskOutput } from '@/ai/flows/intelligent-task-prioritization';
@@ -28,14 +28,25 @@ export async function getTasks(): Promise<Task[]> {
   }
 }
 
-export async function addTask(task: Omit<TaskData, 'createdAt'>): Promise<{ id: string } | { error: string }> {
+export async function addTask(task: Omit<TaskData, 'createdAt'>): Promise<{ data: Task } | { error: string }> {
   try {
-    const docRef = await addDoc(collection(db, 'tasks'), {
+    const taskWithTimestamp = {
       ...task,
       createdAt: serverTimestamp(),
-    });
-    revalidatePath('/');
-    return { id: docRef.id };
+    };
+    const docRef = await addDoc(collection(db, 'tasks'), taskWithTimestamp);
+    
+    // We are creating a task object to return to the client for optimistic update.
+    // The serverTimestamp will be null on the client initially, so we'll use a client-side date.
+    // The actual timestamp will be correct on subsequent full page loads.
+    const newTask: Task = {
+      id: docRef.id,
+      ...task,
+      createdAt: Date.now(), // Use client-side timestamp for immediate UI update
+    };
+
+    revalidatePath('/'); // This will still be useful for other users viewing the board
+    return { data: newTask };
   } catch (error) {
     console.error("Error adding task: ", error);
     return { error: 'Failed to add task.' };
