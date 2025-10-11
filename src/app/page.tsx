@@ -20,7 +20,6 @@ export default async function Home() {
             </div>
             <AddTaskDialog />
           </header>
-
           <KanbanBoard />
         </div>
       </main>
